@@ -18,7 +18,7 @@ constexpr size_t number_of_body_types = 2;
 
 namespace parameters {
 
-constexpr double dt = 0.001;
+constexpr double dt = 0.002;
 constexpr double slop = 1e-6;
 constexpr double positional_correction = 0.5;
 constexpr double field_length = 1.948;
@@ -201,15 +201,10 @@ class Environment {
 
         void set_state(const State& state);
 
-        int get_score(size_t i) const {
-            return scores[i];
-        }
-
     private:
 
         void handle_collision(Body& a, Body& b, double restitution);
     public:
-        std::array<int,2> scores;
         Wall_array walls;
         Barrier_array barriers;
         Mallet_array mallets;

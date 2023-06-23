@@ -234,7 +234,7 @@ void ash::correct_position(
     b.set_position(pos_b);
 }
 
-ash::Environment::Environment() : scores{0,0} {
+ash::Environment::Environment() {
     using namespace ::ash::parameters;
 
     // construct walls
@@ -361,14 +361,12 @@ int ash::Environment::step(const Action& a1, const Action& a2) {
     // check if has entered one of the goals
     double goal_threshold = field_length/2 + puck_radius;
     if (puck.get_position().x < -goal_threshold) {
-        ++scores[1];
-        return -1;
-    }
-    if (puck.get_position().x > goal_threshold) {
-        ++scores[0];
         return 1;
     }
-    return 0;
+    if (puck.get_position().x > goal_threshold) {
+        return 0;
+    }
+    return -1;
 }
 
 ash::Environment::State ash::Environment::get_state() const {

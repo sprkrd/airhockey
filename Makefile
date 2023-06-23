@@ -1,4 +1,4 @@
-OBJECTS = geometry.o vector_maths.o physics.o viz.o player.o
+OBJECTS = geometry.o vector_maths.o physics.o game_loop.o
 CCFLAGS = -Iinclude -O3 -Wall -Werror -pedantic -std=c++17
 LIBRARIES = -lsfml-graphics -lsfml-window -lsfml-system -lsfml-network -pthread
 
