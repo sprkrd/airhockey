@@ -2,7 +2,7 @@ OBJECTS = geometry.o vector_maths.o physics.o game_loop.o
 CCFLAGS = -Iinclude -O3 -Wall -Werror -pedantic -std=c++17
 LIBRARIES = -lsfml-graphics -lsfml-window -lsfml-system -lsfml-network -pthread
 
-all: $(OBJECTS) airhockey airhockey_client client server
+all: $(OBJECTS) airhockey
 
 $(OBJECTS): %.o: %.cpp include/%.hpp
 	g++ $(CCFLAGS) -c $< -o $@

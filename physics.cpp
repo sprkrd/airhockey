@@ -305,6 +305,35 @@ void ash::Environment::reset(size_t sender) {
 int ash::Environment::step(const Action& a1, const Action& a2) {
     // apply forces to mallets
     using namespace ::ash::parameters;
+    for (int i = 0; i < substeps-1; ++i) {
+        substep(a1, a2);
+    }
+    return substep(a1, a2);
+}
+
+ash::Environment::State ash::Environment::get_state() const {
+    State state;
+    for (size_t i = 0; i < mallets.size(); ++i) {
+        state.mallets[i].position = mallets[i].get_position();
+        state.mallets[i].velocity = mallets[i].get_velocity();
+    }
+    state.puck.position = puck.get_position();
+    state.puck.velocity = puck.get_velocity();
+    return state;
+}
+
+void ash::Environment::set_state(const State& state) {
+    for (size_t i = 0; i < mallets.size(); ++i) {
+        mallets[i].set_position(state.mallets[i].position);
+        mallets[i].set_velocity(state.mallets[i].velocity);
+    }
+    puck.set_position(state.puck.position);
+    puck.set_velocity(state.puck.velocity);
+}
+
+int ash::Environment::substep(const Action& a1, const Action& a2) {
+    // apply forces to mallets
+    using namespace ::ash::parameters;
 
     Vector_2d force_1 = pd_control(a1, mallets[0]);
     Vector_2d force_2 = pd_control(a2, mallets[1]);
@@ -320,18 +349,18 @@ int ash::Environment::step(const Action& a1, const Action& a2) {
 
         // 1. update velocity
         // 1.1. accumulated force
-        velocity += body->get_force()*body->get_inv_mass()*dt;
+        velocity += body->get_force()*body->get_inv_mass()*substep_dt;
  
         // 1.2. friction (only_puck)
         double velocity_mag = velocity.norm();
         if (velocity_mag>0 && body==&puck) {
-            double velocity_dec = gravity*puck_mu*dt;
+            double velocity_dec = gravity*puck_mu*substep_dt;
             velocity_dec = fmin(velocity_mag, velocity_dec);
             velocity -= velocity_dec/velocity_mag * velocity;
         }
 
         // 2. update position
-        position += velocity*dt;
+        position += velocity*substep_dt;
 
         // 3. update body's internal state, reset force
         body->set_position(position);
@@ -358,7 +387,7 @@ int ash::Environment::step(const Action& a1, const Action& a2) {
         handle_collision(mallet, puck, mallet_puck_restitution);
     }
 
-    // check if has entered one of the goals
+    // check if puck has entered one of the goals
     double goal_threshold = field_length/2 + puck_radius;
     if (puck.get_position().x < -goal_threshold) {
         return 1;
@@ -367,26 +396,6 @@ int ash::Environment::step(const Action& a1, const Action& a2) {
         return 0;
     }
     return -1;
-}
-
-ash::Environment::State ash::Environment::get_state() const {
-    State state;
-    for (size_t i = 0; i < mallets.size(); ++i) {
-        state.mallets[i].position = mallets[i].get_position();
-        state.mallets[i].velocity = mallets[i].get_velocity();
-    }
-    state.puck.position = puck.get_position();
-    state.puck.velocity = puck.get_velocity();
-    return state;
-}
-
-void ash::Environment::set_state(const State& state) {
-    for (size_t i = 0; i < mallets.size(); ++i) {
-        mallets[i].set_position(state.mallets[i].position);
-        mallets[i].set_velocity(state.mallets[i].velocity);
-    }
-    puck.set_position(state.puck.position);
-    puck.set_velocity(state.puck.velocity);
 }
 
 void ash::Environment::handle_collision(Body& a, Body& b,

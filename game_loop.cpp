@@ -2,7 +2,6 @@
 
 #include <cassert>
 #include <iomanip>
-#include <iostream>
 #include <sstream>
 
 
@@ -145,6 +144,10 @@ void ash::Game_loop::start_new_game(size_t sender) {
     accumulator = 0;
 }
 
+void ash::Game_loop::shutdown() {
+    window->close();
+}
+
 void ash::Game_loop::reset_view() {
     auto[w,h] = window->getSize();
     double aspect_ratio = ((double)h)/w;
@@ -168,7 +171,13 @@ void ash::Game_loop::process_events() {
                 break;
             }
             case sf::Event::Closed: {
-                window->close();
+                shutdown();
+                break;
+            }
+            case sf::Event::KeyPressed: {
+                if (evt.key.code == sf::Keyboard::Key::Escape) {
+                    shutdown();
+                }
                 break;
             }
             default:

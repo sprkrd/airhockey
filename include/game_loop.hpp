@@ -1,9 +1,6 @@
 #include <SFML/Graphics.hpp>
 #include "physics.hpp"
 
-#include <unordered_map>
-
-
 namespace ash {
 
 struct Game_state {
@@ -35,6 +32,8 @@ class Game_loop {
 
     private:
         void start_new_game(size_t sender);
+
+        void shutdown();
 
         void reset_view();
 

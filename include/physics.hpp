@@ -18,7 +18,9 @@ constexpr size_t number_of_body_types = 2;
 
 namespace parameters {
 
-constexpr double dt = 0.002;
+constexpr int substeps = 10;
+constexpr double dt = 0.02;
+constexpr double substep_dt = dt/substeps;
 constexpr double slop = 1e-6;
 constexpr double positional_correction = 0.5;
 constexpr double field_length = 1.948;
@@ -204,6 +206,9 @@ class Environment {
     private:
 
         void handle_collision(Body& a, Body& b, double restitution);
+
+        int substep(const Action& a1, const Action& a2);
+
     public:
         Wall_array walls;
         Barrier_array barriers;
