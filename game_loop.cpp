@@ -52,7 +52,7 @@ class LocalPlayer : public ash::Game_loop::PlayerImpl {
     public:
         LocalPlayer(size_t index, const sf::RenderWindow& window,
                 const sf::View& game_view) :
-            ash::Game_loop::PlayerImpl(index),
+            PlayerImpl(index),
             window(window),
             game_view(game_view)
         {
@@ -83,13 +83,18 @@ class LocalPlayer : public ash::Game_loop::PlayerImpl {
         const sf::View& game_view;
 };
 
-/*
-class RemoteServer : public ash::Game_loop::PlayerImpl {
-};
+
+//class RemoteServer : public ash::Game_loop::PlayerImpl {
+//};
 
 class RemoteClient : public ash::Game_loop::PlayerImpl {
+    public:
+        RemoteClient(size_t index) : PlayerImpl(index) {
+        }
+
+    private:
 };
-*/
+
 
 }
 
