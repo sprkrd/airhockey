@@ -167,6 +167,7 @@ sf::Packet& operator<<(
 sf::Packet& operator>>(
         sf::Packet& packet,
         ash::Game_state& state) {
+    using namespace ash::parameters;
     ash::Environment::State env_state;
     sf::Int32 score_0, score_1, sender, new_game;
     packet >> env_state
@@ -250,14 +251,13 @@ class Remote_server : public RemotePlayer {
             auto packet = receive_packet(100e-3);
             sf::Int32 packet_type, player_index;
             packet >> packet_type;
-            if (packet_type == Packet_type::player_index) {
-                packet >> player_index;
-                other_player = player_index;
-            }
-            else {
+            if (packet_type != Packet_type::player_index) {
                 throw_error("Received wrong packet type"
                         ", expecting player index");
+                
             }
+            packet >> player_index;
+            other_player = player_index;
         }
 
         void step(ash::Game_state& state,
@@ -265,8 +265,13 @@ class Remote_server : public RemotePlayer {
             sf::Packet input;
             input << Packet_type::input_report << a;
             send_packet(input);
-            auto new_state = receive_packet();
-            
+            auto response = receive_packet();
+            sf::Int32 packet_type;
+            response >> packet_type;
+            if (packet_type != Packet_type::state_report) {
+                throw_error("Expecting state report");
+            }
+            response >> state;
         }
 
         int get_other_player_index() {

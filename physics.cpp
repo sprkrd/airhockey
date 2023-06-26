@@ -347,10 +347,6 @@ int ash::Environment::substep(const Action& a1, const Action& a2) {
         auto position = body->get_position();
         auto velocity = body->get_velocity();
 
-        // 1. update velocity
-        // 1.1. accumulated force
-        velocity += body->get_force()*body->get_inv_mass()*substep_dt;
- 
         // 1.2. friction (only_puck)
         double velocity_mag = velocity.norm();
         if (velocity_mag>0 && body==&puck) {
@@ -358,6 +354,12 @@ int ash::Environment::substep(const Action& a1, const Action& a2) {
             velocity_dec = fmin(velocity_mag, velocity_dec);
             velocity -= velocity_dec/velocity_mag * velocity;
         }
+
+        // 1. update velocity
+        // 1.1. accumulated force
+        velocity += body->get_force()*body->get_inv_mass()*substep_dt;
+ 
+
 
         // 2. update position
         position += velocity*substep_dt;
