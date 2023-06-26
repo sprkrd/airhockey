@@ -1,4 +1,5 @@
 #include <SFML/Graphics.hpp>
+#include <SFML/Network.hpp>
 #include "physics.hpp"
 
 namespace ash {
@@ -6,7 +7,8 @@ namespace ash {
 struct Game_state {
     Environment environment;
     std::array<int,2> score;
-    size_t sender;
+    double accumulator;
+    int sender;
     bool new_game;
 };
 
@@ -21,7 +23,7 @@ class Game_loop {
 
         void set_local_player(size_t player);
 
-        void set_remote_client(size_t player);
+        void set_remote_client(size_t player, unsigned short port);
 
         void set_remote_server(const std::string& address,
                 unsigned short port);
@@ -31,7 +33,7 @@ class Game_loop {
         ~Game_loop();
 
     private:
-        void start_new_game(size_t sender);
+        void start_new_game(int sender);
 
         void shutdown();
 
@@ -57,7 +59,6 @@ class Game_loop {
 
         Game_state game_state;
         sf::Clock clk;
-        double accumulator;
         std::array<PlayerImplPtr,2> players;
 };
 
