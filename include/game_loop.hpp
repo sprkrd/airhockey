@@ -15,7 +15,9 @@ struct Game_state {
 class Game_loop {
     public:
         class PlayerImpl;
+        class Remote_server;
         typedef std::unique_ptr<PlayerImpl> PlayerImplPtr;
+        typedef std::unique_ptr<Remote_server> Remote_server_ptr;
 
         Game_loop();
 
@@ -45,11 +47,12 @@ class Game_loop {
 
         void report_state_to_players();
 
-        void render();
+        void render(bool extrapolate = true);
 
         void draw_score();
 
-        void draw_body(const Body& body, const sf::Color& color);
+        void draw_body(const Body& body, const sf::Color& color,
+                bool extrapolate);
 
         std::unique_ptr<sf::RenderWindow> window;
         sf::View game_view;
@@ -58,6 +61,7 @@ class Game_loop {
         double zoom;
 
         Game_state game_state;
+        std::unique_ptr<Remote_server> remote_server;
         sf::Clock clk;
         std::array<PlayerImplPtr,2> players;
 };

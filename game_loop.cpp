@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <iomanip>
+#include <iostream>
 #include <sstream>
 
 
@@ -49,6 +50,7 @@ const char* status_str(sf::Socket::Status status) {
         case sf::Socket::Error:
             return "Error";
     }
+    return "";
 }
 
 
@@ -238,50 +240,6 @@ class RemotePlayer {
         sf::Socket::Status status; 
 };
 
-
-class Remote_server : public RemotePlayer {
-    public:
-        Remote_server(const std::string& address,
-                unsigned short port) {
-            status = remote.connect(address, port);
-            if (status != sf::Socket::Done) {
-                throw_error();
-            }
-            remote.setBlocking(false);
-            auto packet = receive_packet(100e-3);
-            sf::Int32 packet_type, player_index;
-            packet >> packet_type;
-            if (packet_type != Packet_type::player_index) {
-                throw_error("Received wrong packet type"
-                        ", expecting player index");
-                
-            }
-            packet >> player_index;
-            other_player = player_index;
-        }
-
-        void step(ash::Game_state& state,
-                const ash::Environment::Action& a) {
-            sf::Packet input;
-            input << Packet_type::input_report << a;
-            send_packet(input);
-            auto response = receive_packet();
-            sf::Int32 packet_type;
-            response >> packet_type;
-            if (packet_type != Packet_type::state_report) {
-                throw_error("Expecting state report");
-            }
-            response >> state;
-        }
-
-        int get_other_player_index() {
-            return other_player;
-        }
-
-    private:
-        int other_player;
-};
-
 class RemoteClient : public ash::Game_loop::PlayerImpl, RemotePlayer {
     public:
         RemoteClient(size_t index, unsigned short port) :
@@ -324,6 +282,52 @@ class RemoteClient : public ash::Game_loop::PlayerImpl, RemotePlayer {
 
 }
 
+class ash::Game_loop::Remote_server : public RemotePlayer {
+    public:
+        Remote_server(const std::string& address,
+                unsigned short port) {
+            using ::operator>>;
+            status = remote.connect(address, port);
+            if (status != sf::Socket::Done) {
+                throw_error();
+            }
+            remote.setBlocking(false);
+            auto packet = receive_packet(100e-3);
+            sf::Int32 packet_type, player_index;
+            packet >> packet_type;
+            if (packet_type != Packet_type::player_index) {
+                throw_error("Received wrong packet type"
+                        ", expecting player index");
+                
+            }
+            packet >> player_index;
+            local_player = player_index;
+        }
+
+        void step(ash::Game_state& state,
+                const ash::Environment::Action& a) {
+            using ::operator>>;
+            using ::operator<<;
+            sf::Packet input;
+            input << Packet_type::input_report << a;
+            send_packet(input);
+            auto response = receive_packet();
+            sf::Int32 packet_type;
+            response >> packet_type;
+            if (packet_type != Packet_type::state_report) {
+                throw_error("Expecting state report");
+            }
+            response >> state;
+        }
+
+        int get_local_player() {
+            return local_player;
+        }
+
+    private:
+        int local_player;
+};
+
 
 ash::Game_loop::Game_loop() :
     zoom(1)
@@ -348,12 +352,17 @@ void ash::Game_loop::set_local_player(size_t player) {
     players[player].reset(new LocalPlayer(player, *window, game_view));
 }
 
-void set_remote_client(size_t player) {
-    assert(false && "not implemented");
+void ash::Game_loop::set_remote_client(size_t player, unsigned short port) {
+    std::cout << "Waiting for client..." << std::endl;
+    players[player].reset(new RemoteClient(player, port));
+    std::cout << "Client connected" << std::endl;
 }
 
-void set_remote_server(const sf::String& address, unsigned short port) {
-    assert(false && "not implemented");
+void ash::Game_loop::set_remote_server(const std::string& address, unsigned short port) {
+    std::cout << "Connecting to server..." << std::endl;
+    remote_server.reset(new Remote_server(address, port));
+    std::cout << "Connected to server" << std::endl;
+    set_local_player(remote_server->get_local_player());
 }
 
 void ash::Game_loop::run() {
@@ -362,7 +371,7 @@ void ash::Game_loop::run() {
     while (window->isOpen()) {
         process_events();
         update_game_state();
-        render();
+        render(true);
     }
 }
 
@@ -441,7 +450,8 @@ void ash::Game_loop::report_state_to_players() {
     }
 }
 
-void ash::Game_loop::draw_body(const Body& body, const sf::Color& color) {
+void ash::Game_loop::draw_body(const Body& body, const sf::Color& color,
+        bool extrapolate) {
     std::unique_ptr<sf::Shape> shape;
     switch (body.get_type()) {
         case ash::Body_type::Box: {
@@ -463,27 +473,36 @@ void ash::Game_loop::draw_body(const Body& body, const sf::Color& color) {
             assert(false);
         }
     }
-    double x = body.get_position().x;
-    double y = -body.get_position().y;
+    double x, y;
+    if (extrapolate) {
+        auto position = body.get_position() +
+            body.get_velocity()*game_state.accumulator;
+        x = position.x;
+        y = -position.y;
+    }
+    else {
+        x = body.get_position().x;
+        y = -body.get_position().y;
+    }
     shape->setPosition(x, y);
     shape->setFillColor(color);
     window->draw(*shape);
 }
 
-void ash::Game_loop::render() {
+void ash::Game_loop::render(bool extrapolate) {
     window->clear(sf::Color::Black);
     window->setView(game_view);
     const auto& env = game_state.environment;
     for (const auto& wall : env.get_walls()) {
-        draw_body(wall, sf::Color(250, 100, 50));
+        draw_body(wall, sf::Color(250, 100, 50), false);
     }
     for (const auto& barrier : env.get_barriers()) {
-        draw_body(barrier, sf::Color(255, 255, 255, 32));
+        draw_body(barrier, sf::Color(255, 255, 255, 32), false);
     }
     for (const auto& mallet : env.get_mallets()) {
-        draw_body(mallet, sf::Color(100, 250, 50));
+        draw_body(mallet, sf::Color(100, 250, 50), extrapolate);
     }
-    draw_body(env.get_puck(), sf::Color(100, 50, 250));
+    draw_body(env.get_puck(), sf::Color(100, 50, 250), extrapolate);
     window->setView(ui_view);
     draw_score();
     window->display();
