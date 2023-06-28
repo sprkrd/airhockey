@@ -21,31 +21,23 @@ class Game_loop {
 
         Game_loop();
 
-        void disable_player(size_t player);
-
-        void set_local_player(size_t player);
-
-        void set_remote_client(size_t player, unsigned short port);
-
-        void set_remote_server(const std::string& address,
-                unsigned short port);
-
         void run();
 
-        ~Game_loop();
+        virtual ~Game_loop();
+
+    protected:
+
+        virtual void setup();
+
+        virtual void update();
+
+        virtual void shutdown();
 
     private:
-        void start_new_game(int sender);
-
-        void shutdown();
 
         void reset_view();
 
         void process_events();
-
-        void update_game_state();
-
-        void report_state_to_players();
 
         void render(bool extrapolate = true);
 
@@ -61,9 +53,13 @@ class Game_loop {
         double zoom;
 
         Game_state game_state;
-        std::unique_ptr<Remote_server> remote_server;
-        sf::Clock clk;
-        std::array<PlayerImplPtr,2> players;
+};
+
+
+class Server_loop : public Game_loop {
+};
+
+class Client_loop : public Game_loop {
 };
 
 }

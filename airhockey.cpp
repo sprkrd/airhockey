@@ -7,8 +7,7 @@
 
 
 int main(int args, char* argv[]) {
-    ash::Game_loop game_loop;
-    game_loop.set_local_player(0);
-    game_loop.run();
+    ash::Game_loop* game_loop = new ash::Server_loop();
+    game_loop->run();
 }
 
