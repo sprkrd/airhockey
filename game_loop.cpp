@@ -527,7 +527,7 @@ void ash::Remote_player::report_state(const Game_state& state) {
 
 ash::Vector_2d ash::Remote_player::acquire_input() {
     ash::Vector_2d input;
-    auto packet = receive_packet(client, sf::milliseconds(40));
+    auto packet = receive_packet(client, sf::milliseconds(100));
     Packet_type packet_type;
     packet >> packet_type;
     if (packet_type != Packet_type::input_report) {
@@ -632,7 +632,7 @@ void ash::Client_loop::setup() {
     }
     std::cout << "Connected to server" << std::endl;
     server.setBlocking(false);
-    auto packet = receive_packet(server, sf::milliseconds(40));
+    auto packet = receive_packet(server, sf::milliseconds(100));
     Packet_type packet_type;
     packet >> packet_type;
     if (packet_type!= Packet_type::player_index) {
@@ -655,7 +655,7 @@ void ash::Client_loop::update() {
 }
 
 void ash::Client_loop::receive_state() {
-    auto packet = receive_packet(server, sf::milliseconds(40));
+    auto packet = receive_packet(server, sf::milliseconds(100));
     Packet_type packet_type;
     packet >> packet_type;
     if (packet_type != Packet_type::state_report) {
