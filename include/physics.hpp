@@ -45,9 +45,6 @@ constexpr double kd = 10;
 class Body {
     public:
 
-        typedef std::unique_ptr<Body> Ptr;
-        typedef std::unique_ptr<const Body> ConstPtr;
-
         Body(double mass = 1) : inv_mass(1.0 / mass) {
         }
 

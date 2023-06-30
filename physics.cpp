@@ -407,7 +407,7 @@ void ash::Environment::handle_collision(Body& a, Body& b,
         return;
     }
     if (auto collision = collides(a, b)) {
-        resolve_collision(collision.value(), restitution);
+        resolve_collision(*collision, restitution);
         correct_position(*collision, slop, positional_correction);
     }
 }

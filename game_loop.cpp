@@ -5,37 +5,130 @@
 #include <iostream>
 #include <sstream>
 
+namespace {
 
-//class ash::Game_loop::PlayerImpl {
-    //public:
+enum class Packet_type : sf::Int32 {player_index, state_report,
+    input_report, shutdown};
 
-        //PlayerImpl(size_t index = 0) : index(index) {
-        //}
+sf::Packet& operator<<(sf::Packet& packet, Packet_type type) {
+    return packet << static_cast<sf::Int32>(type);
+}
 
-        //size_t get_index() const {
-            //return index;
-        //}
-        
-        //virtual ash::Vector_2d get_input() = 0;
+sf::Packet& operator>>(sf::Packet& packet, Packet_type& type) {
+    sf::Int32 type_int32;
+    packet >> type_int32;
+    type = static_cast<Packet_type>(type_int32);
+    return packet;
+}
 
-        //virtual void report_state(const Game_state& state) = 0;
+sf::Packet& operator<<(sf::Packet& packet, const ash::Vector_2d& v) {
+  return packet << v.x << v.y;
+}
 
-        //virtual ~PlayerImpl() = default;
+sf::Packet& operator>>(sf::Packet& packet, ash::Vector_2d& v) {
+  return packet >> v.x >> v.y;
+}
 
-    //protected:
 
-        //void set_index(size_t index) {
-            //this->index = index;
-        //}
+sf::Packet& operator<<(
+      sf::Packet& packet,
+      const ash::Environment::State::BodyStatus& status) {
+  return packet << status.position << status.velocity;
+}
 
-    //private:
+sf::Packet& operator>>(
+      sf::Packet& packet,
+      ash::Environment::State::BodyStatus& status) {
+  return packet >> status.position >> status.velocity;
+}
 
-        //size_t index;
+sf::Packet& operator<<(
+      sf::Packet& packet,
+      const ash::Environment::State& state) {
+  return packet << state.mallets[0] << state.mallets[1]
+                << state.puck;
+}
 
-//};
+sf::Packet& operator>>(
+      sf::Packet& packet,
+      ash::Environment::State& state) {
+  return packet >> state.mallets[0] >> state.mallets[1]
+                >> state.puck;
+}
 
-//namespace {
 
+sf::Packet& operator<<(
+      sf::Packet& packet,
+      const ash::Game_state& state) {
+  packet << state.environment.get_state()
+         << state.accumulator
+         << sf::Int32(state.score[0]) << sf::Int32(state.score[1])
+         << sf::Int32(state.sender)
+         << sf::Int32(state.new_game);
+  return packet;
+}
+
+sf::Packet& operator>>(
+      sf::Packet& packet,
+      ash::Game_state& state) {
+  using namespace ash::parameters;
+  ash::Environment::State env_state;
+  sf::Int32 score_0, score_1, sender, new_game;
+  packet >> env_state
+         >> state.accumulator
+         >> score_0 >> score_1
+         >> sender
+         >> new_game;
+  state.environment.set_state(env_state);
+  state.score[0] = score_0;
+  state.score[1] = score_1;
+  state.sender = sender;
+  state.new_game = new_game;
+  return packet;
+}
+
+void send_packet(sf::TcpSocket& socket, sf::Packet& packet,
+        sf::Time timeout) {
+    sf::Socket::Status status;
+    sf::Clock clk;
+    bool onprogress;
+    bool timed_out;
+    do {
+        status = socket.send(packet);
+        onprogress = status == sf::Socket::Partial ||
+            status == sf::Socket::NotReady;
+        timed_out = clk.getElapsedTime() >= timeout;
+
+    } while (onprogress && !timed_out);
+    if (timed_out) {
+      throw ash::Network_error("Time out sending packet");
+    }
+    else if (status != sf::Socket::Done) {
+      throw ash::Network_error("Error sending packet");
+    }
+}
+
+sf::Packet receive_packet(sf::TcpSocket& socket, sf::Time timeout) {
+    sf::Packet packet;
+    sf::Socket::Status status;
+    sf::Clock clk;
+    bool onprogress;
+    bool timed_out;
+    do {
+        status = socket.receive(packet);
+        onprogress = status == sf::Socket::Partial ||
+            status == sf::Socket::NotReady;
+        timed_out = clk.getElapsedTime() >= timeout;
+
+    } while (onprogress && !timed_out);
+    if (timed_out) {
+      throw ash::Network_error("Time out receiving packet");
+    }
+    else if (status != sf::Socket::Done) {
+      throw ash::Network_error("Error sending packet");
+    }
+    return packet;
+}
 
 //const char* status_str(sf::Socket::Status status) {
     //switch (status) {
@@ -75,40 +168,7 @@
         //ash::Vector_2d next_input;
 //};
 
-//class LocalPlayer : public ash::Game_loop::PlayerImpl {
-    //public:
-        //LocalPlayer(size_t index, const sf::RenderWindow& window,
-                //const sf::View& game_view) :
-            //PlayerImpl(index),
-            //window(window),
-            //game_view(game_view)
-        //{
 
-        //}
-
-        //ash::Vector_2d get_input() override {
-            //auto mouse_pixel = sf::Mouse::getPosition(window);
-            //auto[mouse_x, mouse_y] = window.mapPixelToCoords(
-                    //mouse_pixel, game_view);
-            //return ash::Vector_2d(mouse_x, -mouse_y);
-        //}
-
-        //void report_state(const ash::Game_state& state) override {
-            //if (state.new_game) {
-                //size_t player = get_index();
-                //auto[mallet_x, mallet_y] = state.environment
-                    //.get_mallets()[player].get_position();
-                //sf::Vector2f mallet_coords(mallet_x, mallet_y);
-                //auto mallet_pixel = window.mapCoordsToPixel(
-                        //mallet_coords, game_view);
-                //sf::Mouse::setPosition(mallet_pixel, window);
-            //}
-        //}
-
-    //private:
-        //const sf::RenderWindow& window;
-        //const sf::View& game_view;
-//};
 
 //namespace Packet_type {
 
@@ -119,70 +179,7 @@
 
 //}
 
-//sf::Packet& operator<<(sf::Packet& packet, const ash::Vector_2d& v) {
-    //return packet << v.x << v.y;
-//}
 
-//sf::Packet& operator>>(sf::Packet& packet, ash::Vector_2d& v) {
-    //return packet >> v.x >> v.y;
-//}
-
-
-//sf::Packet& operator<<(
-        //sf::Packet& packet,
-        //const ash::Environment::State::BodyStatus& status) {
-    //return packet << status.position << status.velocity;
-//}
-
-//sf::Packet& operator>>(
-        //sf::Packet& packet,
-        //ash::Environment::State::BodyStatus& status) {
-    //return packet >> status.position >> status.velocity;
-//}
-
-//sf::Packet& operator<<(
-        //sf::Packet& packet,
-        //const ash::Environment::State& state) {
-    //return packet << state.mallets[0] << state.mallets[1]
-                  //<< state.puck;
-//}
-
-//sf::Packet& operator>>(
-        //sf::Packet& packet,
-        //ash::Environment::State& state) {
-    //return packet >> state.mallets[0] >> state.mallets[1]
-                  //>> state.puck;
-//}
-
-
-//sf::Packet& operator<<(
-        //sf::Packet& packet,
-        //const ash::Game_state& state) {
-    //packet << state.environment.get_state()
-           //<< sf::Int32(state.score[0]) << sf::Int32(state.score[1])
-           //<< sf::Int32(state.sender)
-           //<< sf::Int32(state.new_game);
-    //return packet;
-//}
-
-
-//sf::Packet& operator>>(
-        //sf::Packet& packet,
-        //ash::Game_state& state) {
-    //using namespace ash::parameters;
-    //ash::Environment::State env_state;
-    //sf::Int32 score_0, score_1, sender, new_game;
-    //packet >> env_state
-           //>> score_0 >> score_1
-           //>> sender
-           //>> new_game;
-    //state.environment.set_state(env_state);
-    //state.score[0] = score_0;
-    //state.score[1] = score_1;
-    //state.sender = sender;
-    //state.new_game = new_game;
-    //return packet;
-//}
 
 //class RemotePlayer {
     //public:
@@ -279,8 +276,7 @@
         //}
 //};
 
-
-//}
+}
 
 //class ash::Game_loop::Remote_server : public RemotePlayer {
     //public:
@@ -328,17 +324,6 @@
         //int local_player;
 //};
 
-
-ash::Game_loop::Game_loop() :
-    zoom(1)
-{
-    window.reset(new sf::RenderWindow(
-                sf::VideoMode(600,480), "Airhockey"));
-    window->setVerticalSyncEnabled(true);
-    reset_view();
-    ui_font.loadFromFile("Spaceport_2006.otf");
-}
-
 //void ash::Game_loop::disable_player(size_t player) {
     //players[player].reset(new NullPlayer(player));
 //}
@@ -360,6 +345,16 @@ ash::Game_loop::Game_loop() :
     //set_local_player(remote_server->get_local_player());
 //}
 
+ash::Game_loop::Game_loop() :
+    zoom(1)
+{
+    window.reset(new sf::RenderWindow(
+                sf::VideoMode(600,480), "Airhockey"));
+    window->setVerticalSyncEnabled(true);
+    reset_view();
+    ui_font.loadFromFile("Spaceport_2006.otf");
+}
+
 void ash::Game_loop::run() {
     setup();
     while (window->isOpen()) {
@@ -369,14 +364,18 @@ void ash::Game_loop::run() {
     }
 }
 
-ash::Game_loop::~Game_loop() = default;
+ash::Vector_2d ash::Game_loop::get_mouse_coords() const {
+    auto mouse_pixel = sf::Mouse::getPosition(*window);
+    auto[mouse_x, mouse_y] = window->mapPixelToCoords(
+            mouse_pixel, game_view);
+    return ash::Vector_2d(mouse_x, -mouse_y);
+}
 
-//void ash::Game_loop::start_new_game(int sender) {
-    //game_state.sender = sender;
-    //game_state.environment.reset(sender);
-    //game_state.new_game = true;
-    //game_state.accumulator = 0;
-//}
+void ash::Game_loop::set_mouse_position(const ash::Vector_2d& coords) {
+    sf::Vector2f coords_2f(coords.x, coords.y);
+    auto pixel = window->mapCoordsToPixel(coords_2f, game_view);
+    sf::Mouse::setPosition(pixel, *window);
+}
 
 void ash::Game_loop::setup() {
 
@@ -427,30 +426,6 @@ void ash::Game_loop::process_events() {
         }
     }
 }
-
-//void ash::Game_loop::update_game_state() {
-    //game_state.accumulator += clk.restart().asSeconds();
-    //while (game_state.accumulator > parameters::dt) {
-        //auto input1 = players[0]->get_input();
-        //auto input2 = players[1]->get_input();
-        //int winner = game_state.environment.step(input1, input2);
-        //if (winner != -1) {
-            //++game_state.score[winner];
-            //start_new_game(1 - game_state.sender);
-        //}
-        //else {
-            //game_state.new_game = false;
-            //game_state.accumulator -= parameters::dt;
-        //}
-        //report_state_to_players();
-    //}
-//}
-
-//void ash::Game_loop::report_state_to_players() {
-    //for (size_t i = 0; i < 2; ++i) {
-        //players[i]->report_state(game_state);
-    //}
-//}
 
 void ash::Game_loop::draw_body(const Body& body, const sf::Color& color,
         bool extrapolate) {
@@ -515,4 +490,116 @@ void ash::Game_loop::draw_score() {
     score_text.setPosition(10,10);
     window->draw(score_text);
 }
+
+void ash::Local_player::report_state(const Game_state& state) {
+    if (state.new_game) {
+        int player = get_index();
+        auto mallet_position = state.environment
+            .get_mallets()[player].get_position();
+        game_loop->set_mouse_position(mallet_position);
+    }
+}
+
+
+ash::Vector_2d ash::Local_player::acquire_input() {
+    return game_loop->get_mouse_coords();
+}
+
+ash::Remote_player::Remote_player(int index, sf::TcpListener& listener) :
+    Player(index)
+{
+    auto status = listener.accept(client);
+    if (status != sf::Socket::Done) {
+        throw Network_error("Error trying to accept new connection");
+    }
+    client.setBlocking(false);
+    sf::Packet packet;
+    packet << Packet_type::player_index << sf::Int32(get_index());
+    send_packet(client, packet, sf::milliseconds(10));
+}
+
+void ash::Remote_player::report_state(const Game_state& state) {
+    using ::operator<<;
+    sf::Packet packet;
+    packet << Packet_type::state_report << state; 
+    send_packet(client, packet, sf::milliseconds(10));
+}
+
+ash::Vector_2d ash::Remote_player::acquire_input() {
+    ash::Vector_2d input;
+    auto packet = receive_packet(client, sf::milliseconds(40));
+    Packet_type packet_type;
+    packet >> packet_type;
+    if (packet_type != Packet_type::input_report) {
+        throw Network_error("Expecting input report");
+    }
+    packet >> input;
+    return input;
+}
+
+ash::Server_loop::Server_loop(int local_player, unsigned short port) :
+    local_player(local_player), port(port)
+{
+
+}
+
+void ash::Server_loop::setup() {
+    sf::TcpListener listener;
+    auto status = listener.listen(port);
+    if (status != sf::Socket::Done) {
+        throw Network_error("Couldn't bind listener to " +
+                std::to_string(port));
+    }
+    if (local_player < 0) {
+        // dedicated server
+        for (int i = 0; i < 2; ++i) {
+            std::cout << "Waiting for player " << i << "..." << std::endl;
+            players[i].reset(new Remote_player(i, listener));
+            std::cout << "Player " << i << " connected" << std::endl;
+        }
+    }
+    else {
+        int remote = 1 - local_player;
+        players[local_player].reset(new Local_player(local_player, this));
+        std::cout << "Waiting for player " << remote << "..." << std::endl;
+        players[remote].reset(
+                new Remote_player(remote, listener));
+        std::cout << "Player " << remote << " connected" << std::endl;
+    }
+    start_new_game();
+    report_to_players();
+}
+
+void ash::Server_loop::update() {
+    game_state.accumulator += clk.restart().asSeconds();
+    while (game_state.accumulator > parameters::dt) {
+        auto input1 = players[0]->acquire_input();
+        auto input2 = players[1]->acquire_input();
+        int winner = game_state.environment.step(input1, input2);
+        if (winner != -1) {
+            ++game_state.score[winner];
+            start_new_game(1 - game_state.sender);
+        }
+        else {
+            game_state.new_game = false;
+            game_state.accumulator -= parameters::dt;
+        }
+        report_to_players();
+    }
+}
+
+void ash::Server_loop::start_new_game(int sender) {
+    game_state.sender = sender;
+    game_state.environment.reset(sender);
+    game_state.new_game = true;
+    game_state.accumulator = 0;
+    clk.restart();
+}
+
+void ash::Server_loop::report_to_players() {
+    for (int i = 0; i < 2; ++i) {
+        players[i]->report_state(game_state);
+    }
+}
+
 

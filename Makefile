@@ -1,5 +1,5 @@
 OBJECTS = geometry.o vector_maths.o physics.o game_loop.o
-CCFLAGS = -Iinclude -O3 -Wall -Werror -pedantic -std=c++17
+CCFLAGS = -Iinclude -O3 -Wall -Werror -pedantic -std=c++17 -Wno-error=unused-function
 LIBRARIES = -lsfml-graphics -lsfml-window -lsfml-system -lsfml-network -pthread
 
 all: $(OBJECTS) airhockey
