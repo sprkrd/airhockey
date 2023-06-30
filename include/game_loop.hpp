@@ -143,12 +143,24 @@ class Server_loop : public Game_loop {
 class Client_loop : public Game_loop {
     public:
 
-        
+        Client_loop(const std::string& address, unsigned short port);
+
+    protected:
+
+        void setup() override;
+
+        void update() override;
 
     private:
+        void receive_state();
 
+        void send_input();
+
+        sf::Clock clk;
+        std::string address;
+        unsigned short port;
         sf::TcpSocket server;
-        Player::Ptr player;
+        Player::Ptr local_player;
 };
 
 }

@@ -602,4 +602,71 @@ void ash::Server_loop::report_to_players() {
     }
 }
 
+ash::Client_loop::Client_loop(const std::string& address, unsigned short port) :
+    address(address), port(port)
+{
 
+            //using ::operator>>;
+            //status = remote.connect(address, port);
+            //if (status != sf::Socket::Done) {
+                //throw_error();
+            //}
+            //remote.setBlocking(false);
+            //auto packet = receive_packet(100e-3);
+            //sf::Int32 packet_type, player_index;
+            //packet >> packet_type;
+            //if (packet_type != Packet_type::player_index) {
+                //throw_error("Received wrong packet type"
+                        //", expecting player index");
+                
+            //}
+            //packet >> player_index;
+            //local_player = player_index;
+}
+
+void ash::Client_loop::setup() {
+    std::cout << "Trying to connect to server" << std::endl;
+    auto status = server.connect(address, port);
+    if (status != sf::Socket::Done) {
+        throw Network_error("Couldn't connect to " + address + ":" + std::to_string(port));
+    }
+    std::cout << "Connected to server" << std::endl;
+    server.setBlocking(false);
+    auto packet = receive_packet(server, sf::milliseconds(40));
+    Packet_type packet_type;
+    packet >> packet_type;
+    if (packet_type!= Packet_type::player_index) {
+        throw Network_error("Have not received local player index");
+    }
+    sf::Int32 local_player_index;
+    packet >> local_player_index;
+    local_player.reset(new Local_player(local_player_index, this));
+    receive_state();
+    clk.restart();
+}
+
+void ash::Client_loop::update() {
+    game_state.accumulator += clk.restart().asSeconds();
+    while (game_state.accumulator > parameters::dt) {
+        send_input();
+        receive_state();
+        local_player->report_state(game_state);
+    }
+}
+
+void ash::Client_loop::receive_state() {
+    auto packet = receive_packet(server, sf::milliseconds(40));
+    Packet_type packet_type;
+    packet >> packet_type;
+    if (packet_type != Packet_type::state_report) {
+        throw Network_error("Have not received state report");
+    }
+    packet >> game_state;
+}
+
+void ash::Client_loop::send_input() {
+    using ::operator<<;
+    sf::Packet packet;
+    packet << Packet_type::input_report << local_player->acquire_input();
+    send_packet(server, packet, sf::milliseconds(10));
+}
